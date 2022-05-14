@@ -38,25 +38,17 @@ SET manager_id = 3
 WHERE id = 1;
 
 UPDATE employee
-SET manager_id = 1
-WHERE id = 4;
-
-UPDATE employee
-Set manager_id = 2
+Set manager_id = 4
 WHERE id = 5;
 
 UPDATE employee
-Set manager_id = 2
+Set manager_id = 4
 WHERE id = 6;
 
 UPDATE employee
-Set manager_id = 6
+Set manager_id = 2
 WHERE id = 7;
 
 UPDATE employee
-Set manager_id = 6
+Set manager_id = 2
 WHERE id = 8;
-
-UPDATE employee
-Set manager_id = 3
-WHERE id = 10;

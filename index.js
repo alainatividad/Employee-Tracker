@@ -237,11 +237,18 @@ function addAction(table) {
                   runQuery(query, param).then(() => mainSelect());
                 });
               } else {
-                query =
-                  "INSERT INTO employee (first_name, last_name, role_id) VALUES (?,?,?)";
-                param = [val.firstName, val.lastName, roleId];
-                console.log(param);
-                runQuery(query, param).then(() => mainSelect());
+                query = `SELECT id as name FROM role WHERE title = '${val.role}'`;
+                getQuery(query)
+                  .then((choices) => {
+                    [roleId] = choices;
+                  })
+                  .then(() => {
+                    query =
+                      "INSERT INTO employee (first_name, last_name, role_id) VALUES (?,?,?)";
+                    param = [val.firstName, val.lastName, roleId];
+                    console.log(param);
+                    runQuery(query, param).then(() => mainSelect());
+                  });
               }
             });
         });

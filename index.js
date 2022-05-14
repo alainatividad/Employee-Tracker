@@ -1,12 +1,23 @@
 // include third party modules that would be used in the app
 const inquirer = require("inquirer");
-const database = require("mysql2");
+const mysql = require("mysql2");
 const cTable = require("console.table");
 
 // include the base classes for Employee, Department, and Role
 const Employee = require("./lib/employee");
 const Department = require("./lib/department");
 const Role = require("./lib/role");
+
+// Connect to database
+const db = mysql.createConnection(
+  {
+    host: "localhost",
+    user: "root",
+    password: "abc123!",
+    database: "company_db",
+  },
+  console.log(`Connected to the company_db database.`)
+);
 
 function init() {
   console.log(`
@@ -34,9 +45,9 @@ function mainSelect() {
         name: "action",
         message: "What would you like to do?",
         choices: [
-          "View Departments",
-          "View Roles",
-          "View Employees",
+          "View All Departments",
+          "View All Roles",
+          "View All Employees",
           "Add Department",
           "Add Role",
           "Add Employee",
@@ -49,36 +60,69 @@ function mainSelect() {
       // split actions into arrays
       const action = val.action.split(" ");
 
-      if (action[0] === "View") {
-        switch (action[1]) {
-          case "Departments":
-            break;
-          case "Roles":
-            break;
-
-          case "Employees":
-            break;
-        }
-      } else if (action[0] === "Add") {
-        switch (action[1]) {
-          case "Departments":
-            break;
-          case "Roles":
-            break;
-
-          case "Employees":
-            break;
-        }
-      } else if (action[0] === "Update") {
-      } else {
-        quit();
+      switch (action[0]) {
+        case "View":
+          viewAction(action[2]);
+          break;
+        case "Add":
+          addAction(action[1]);
+          break;
+        case "Update":
+          updateAction();
+          break;
+        default:
+          quit();
       }
     });
 }
 
 function quit() {
   console.log("\nGoodbye!");
+  db.end();
   process.exit(0);
 }
 
 init();
+
+function runQuery(query, param) {
+  db.promise()
+    .query(query, param)
+    .then(([rows, fields]) => {
+      if (query.includes("SELECT")) {
+        if (rows.length > 0) {
+          console.log("\n");
+          console.table(rows);
+        } else {
+          console.log(
+            "\nThere are no records to show. Please add entries to the table.\n"
+          );
+        }
+      } else {
+        if (rows.affectedRows > 0) {
+          console.log(`${param} added to the database.`);
+        }
+      }
+      mainSelect();
+    })
+    .catch(console.log);
+}
+
+function viewAction(table) {
+  let query;
+  switch (table) {
+    case "Departments":
+      query = "SELECT * from department";
+      break;
+
+    case "Roles":
+      query =
+        "SELECT role.id, role.title, department.name, role.salary from role join department on department.id = role.department_id order by role.id";
+      break;
+
+    case "Employees":
+      query =
+        "SELECT a.id, a.first_name, a.last_name, role.title, role.name as department, role.salary, concat(b.first_name,' ',b.last_name) as manager from employee a left join employee b on a.manager_id = b.id join (select role.id, role.title, role.salary, department.name from role join department on department.id = role.department_id) role on role.id = a.role_id;";
+      break;
+  }
+  runQuery(query);
+}

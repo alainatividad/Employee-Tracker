@@ -1,7 +1,7 @@
 USE company_db
 -- data from https://www.mockaroo.com/
 
-INSERT INTO department (id, department_name) 
+INSERT INTO department (id, name) 
 VALUES  (1, 'Administration'),
         (2, 'Engineering'),
         (3, 'Sales'),

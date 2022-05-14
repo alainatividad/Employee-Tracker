@@ -1,25 +1,6 @@
 // include third party modules that would be used in the app
 const inquirer = require("inquirer");
-const mysql = require("mysql2");
-const cTable = require("console.table");
-
-// include the base classes for Employee, Department, and Role
-const Employee = require("./lib/employee");
-const Department = require("./lib/department");
-const Role = require("./lib/role");
-
-let choices = [];
-
-// Connect to database
-const db = mysql.createConnection(
-  {
-    host: "localhost",
-    user: "root",
-    password: "abc123!",
-    database: "company_db",
-  },
-  console.log(`Connected to the company_db database.`)
-);
+const [runQuery, getQuery] = require("./helper/sqlUtils");
 
 function init() {
   console.log(`
@@ -80,48 +61,10 @@ function mainSelect() {
 
 function quit() {
   console.log("\nGoodbye!");
-  db.end();
   process.exit(0);
 }
 
 init();
-
-function showQuery(query, param) {
-  db.promise()
-    .query(query, param)
-    .then(([rows]) => {
-      if (query.includes("SELECT")) {
-        // console.log(rows);
-        if (rows.length > 0) {
-          console.log("\n");
-          console.table(rows);
-        } else {
-          console.log(
-            "\nThere are no records to show. Please add entries to the table.\n"
-          );
-        }
-      } else {
-        if (rows.affectedRows > 0) {
-          console.log(`${param[0]} added to the database.`);
-        }
-      }
-      mainSelect();
-    })
-    .catch(console.log);
-}
-
-function getQuery(query) {
-  return db
-    .promise()
-    .query(query)
-    .then(([rows]) => {
-      // console.log(rows);
-      choices = [];
-      rows.forEach((val) => {
-        choices.push(val.name);
-      });
-    });
-}
 
 function viewAction(table) {
   let query;
@@ -140,7 +83,7 @@ function viewAction(table) {
         "SELECT a.id, a.first_name, a.last_name, role.title, role.name as department, role.salary, concat(b.first_name,' ',b.last_name) as manager from employee a left join employee b on a.manager_id = b.id join (select role.id, role.title, role.salary, department.name from role join department on department.id = role.department_id) role on role.id = a.role_id;";
       break;
   }
-  showQuery(query);
+  runQuery(query).then(() => mainSelect());
 }
 
 function addAction(table) {
@@ -165,9 +108,58 @@ function addAction(table) {
         .then((val) => {
           query = "INSERT INTO department (name) VALUES (?)";
           param = [val.deptName];
-          console.log(param);
-          showQuery(query, param);
+          runQuery(query, param).then(() => mainSelect());
         });
+      break;
+
+    case "Role":
+      query = "SELECT name from department";
+      getQuery(query).then((choices) => {
+        inquirer
+          .prompt([
+            {
+              type: "input",
+              name: "roleName",
+              message: "What is the name of the role?",
+              validate(roleName) {
+                if (!roleName) {
+                  return "Please enter a role name";
+                }
+                return true;
+              },
+            },
+            {
+              type: "input",
+              name: "roleSalary",
+              message: "What is the salary of the role?",
+              validate(roleSalary) {
+                if (!roleSalary) {
+                  return "Please enter a salary";
+                }
+                if (!/[0-9]/gi.test(roleSalary)) {
+                  return "Please enter a non-zero number";
+                }
+                return true;
+              },
+            },
+            {
+              type: "list",
+              name: "roleDept",
+              message: "Which department does this role belong to?",
+              choices: [...choices],
+            },
+          ])
+          .then((val) => {
+            query = `SELECT id as name FROM department WHERE name = '${val.roleDept}'`;
+            getQuery(query).then((choices) => {
+              query =
+                "INSERT INTO role (title,salary,department_id) VALUES (?,?,?)";
+              param = [val.roleName, parseInt(val.roleSalary), ...choices];
+              console.log(param);
+              runQuery(query, param).then(() => mainSelect());
+            });
+          });
+      });
       break;
   }
 }

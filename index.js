@@ -8,6 +8,8 @@ const Employee = require("./lib/employee");
 const Department = require("./lib/department");
 const Role = require("./lib/role");
 
+let choices = [];
+
 // Connect to database
 const db = mysql.createConnection(
   {
@@ -84,11 +86,12 @@ function quit() {
 
 init();
 
-function runQuery(query, param) {
+function showQuery(query, param) {
   db.promise()
     .query(query, param)
-    .then(([rows, fields]) => {
+    .then(([rows]) => {
       if (query.includes("SELECT")) {
+        // console.log(rows);
         if (rows.length > 0) {
           console.log("\n");
           console.table(rows);
@@ -99,12 +102,25 @@ function runQuery(query, param) {
         }
       } else {
         if (rows.affectedRows > 0) {
-          console.log(`${param} added to the database.`);
+          console.log(`${param[0]} added to the database.`);
         }
       }
       mainSelect();
     })
     .catch(console.log);
+}
+
+function getQuery(query) {
+  return db
+    .promise()
+    .query(query)
+    .then(([rows]) => {
+      // console.log(rows);
+      choices = [];
+      rows.forEach((val) => {
+        choices.push(val.name);
+      });
+    });
 }
 
 function viewAction(table) {
@@ -124,5 +140,34 @@ function viewAction(table) {
         "SELECT a.id, a.first_name, a.last_name, role.title, role.name as department, role.salary, concat(b.first_name,' ',b.last_name) as manager from employee a left join employee b on a.manager_id = b.id join (select role.id, role.title, role.salary, department.name from role join department on department.id = role.department_id) role on role.id = a.role_id;";
       break;
   }
-  runQuery(query);
+  showQuery(query);
+}
+
+function addAction(table) {
+  let query;
+  let param;
+  switch (table) {
+    case "Department":
+      inquirer
+        .prompt([
+          {
+            type: "input",
+            name: "deptName",
+            message: "What is the name of the department?",
+            validate(deptName) {
+              if (!deptName) {
+                return "Please enter a department name";
+              }
+              return true;
+            },
+          },
+        ])
+        .then((val) => {
+          query = "INSERT INTO department (name) VALUES (?)";
+          param = [val.deptName];
+          console.log(param);
+          showQuery(query, param);
+        });
+      break;
+  }
 }

@@ -161,5 +161,90 @@ function addAction(table) {
           });
       });
       break;
+
+    case "Employee":
+      let title;
+      let manager;
+      query = "SELECT title as name from role";
+      getQuery(query).then((choices) => {
+        title = [...choices];
+      });
+      query = "SELECT concat(first_name,' ',last_name) as name from employee";
+      getQuery(query)
+        .then((choices) => {
+          // get all employee names and add NULL to manager array
+          manager = ["None", ...choices];
+        })
+        .then(() => {
+          inquirer
+            .prompt([
+              {
+                type: "input",
+                name: "firstName",
+                message: "What is the first name of the employee?",
+                validate(firstName) {
+                  if (!firstName) {
+                    return "Please enter the first name";
+                  }
+                  return true;
+                },
+              },
+              {
+                type: "input",
+                name: "lastName",
+                message: "What is the last name of the employee?",
+                validate(lastName) {
+                  if (!lastName) {
+                    return "Please enter the last name";
+                  }
+                  return true;
+                },
+              },
+              {
+                type: "list",
+                name: "role",
+                message: "What is the role of the employee?",
+                choices: [...title],
+              },
+              {
+                type: "list",
+                name: "manager",
+                message: "Who is the manager of the employee?",
+                choices: [...manager],
+              },
+            ])
+            .then((val) => {
+              let roleId;
+              let managerId;
+
+              const manager = val.manager === "None" ? "" : val.manager;
+              if (manager) {
+                const nameArr = val.manager.split(" ");
+                const [firstName, lastName] = nameArr;
+
+                query = `SELECT id as name FROM role WHERE title = '${val.role}'`;
+                getQuery(query).then((choices) => {
+                  [roleId] = choices;
+                });
+
+                query = `SELECT id as name FROM employee WHERE first_name = '${firstName}' and last_name = '${lastName}'`;
+                getQuery(query).then((choices) => {
+                  [managerId] = choices;
+                  query =
+                    "INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?,?,?,?)";
+                  param = [val.firstName, val.lastName, roleId, managerId];
+                  console.log(param);
+                  runQuery(query, param).then(() => mainSelect());
+                });
+              } else {
+                query =
+                  "INSERT INTO employee (first_name, last_name, role_id) VALUES (?,?,?)";
+                param = [val.firstName, val.lastName, roleId];
+                console.log(param);
+                runQuery(query, param).then(() => mainSelect());
+              }
+            });
+        });
+      break;
   }
 }

@@ -255,3 +255,47 @@ function addAction(table) {
       break;
   }
 }
+
+function updateAction() {
+  let title;
+  // let employee;
+
+  query = "SELECT title as name from role";
+  getQuery(query).then((choices) => {
+    title = [...choices];
+  });
+  query = "SELECT concat(first_name,' ',last_name) as name from employee";
+  getQuery(query).then((choices) => {
+    inquirer
+      .prompt([
+        {
+          type: "list",
+          name: "name",
+          message: "Which employee's role do you want to update?",
+          choices: [...choices],
+        },
+        {
+          type: "list",
+          name: "role",
+          message: "Which role do you want to assign the selected employee?",
+          choices: [...title],
+        },
+      ])
+      .then((val) => {
+        const nameArr = val.name.split(" ");
+        const [firstName, lastName] = nameArr;
+
+        query = `SELECT id as name FROM role WHERE title = '${val.role}'`;
+        getQuery(query)
+          .then((choices) => {
+            [roleId] = choices;
+          })
+          .then(() => {
+            query = `UPDATE employee SET role_id = ? WHERE first_name = '${firstName}' and last_name = '${lastName}'`;
+            param = [roleId];
+            console.log(param);
+            runQuery(query, param).then(() => mainSelect());
+          });
+      });
+  });
+}

@@ -1,7 +1,10 @@
+// load mysql2 and console.table modules to handle the queries and printing of the tables on the command line
 const mysql = require("mysql2");
 const cTable = require("console.table");
 
+// this stores the results of a select statement
 let choices = [];
+
 // Connect to database
 const db = mysql.createConnection(
   {
@@ -13,12 +16,12 @@ const db = mysql.createConnection(
   console.log(`Connected to the company_db database.`)
 );
 
+// run query to either select and show results or update records -- doesn't return anything
 const runQuery = async (query, param) => {
   const [rows] = await db.promise().query(query, param);
+  // this handles the select statements to be printed on the command line
   if (query.includes("SELECT")) {
-    // console.log(rows);
     if (rows.length > 0) {
-      // console.log("\n");
       console.table(rows);
     } else {
       console.log(
@@ -26,35 +29,17 @@ const runQuery = async (query, param) => {
       );
     }
   } else {
+    // this handles the adding of new records to tables
     if (rows.affectedRows > 0) {
       console.log(`${param[0]} added to the database.`);
     }
   }
-
-  // return db
-  // .promise()
-  // .query(query, param)
-  // .then(([rows]) => {
-  //   if (query.includes("SELECT")) {
-  //     // console.log(rows);
-  //     if (rows.length > 0) {
-  //       // console.log("\n");
-  //       console.table(rows);
-  //     } else {
-  //       console.log(
-  //         "\nThere are no records to show. Please add entries to the table.\n"
-  //       );
-  //     }
-  //   } else {
-  //     if (rows.affectedRows > 0) {
-  //       console.log(`${param[0]} added to the database.`);
-  //     }
-  //   }
-  // });
 };
 
+// run a select statement and return the records in array form
 const getQuery = async (query) => {
   const [rows] = await db.promise().query(query);
+  // since we're doing a push, let's clear the contents of choices first
   choices = [];
   rows.forEach((val) => {
     choices.push(val.name);

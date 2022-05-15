@@ -20,7 +20,7 @@ function init() {
 }
 
 function mainSelect() {
-  // prompt that would ask for more team members or to finish adding
+  // prompt for all available actions
   inquirer
     .prompt([
       {
@@ -45,9 +45,11 @@ function mainSelect() {
 
       switch (action[0]) {
         case "View":
+          // passes the third word from the options in the main selection
           viewAction(action[2]);
           break;
         case "Add":
+          // passes the second word from the options in the main selection
           addAction(action[1]);
           break;
         case "Update":
@@ -64,10 +66,9 @@ function quit() {
   process.exit(0);
 }
 
-init();
-
 function viewAction(table) {
   let query;
+  // pass the query to be shown based on the parameter passed
   switch (table) {
     case "Departments":
       query = "SELECT * from department";
@@ -83,6 +84,7 @@ function viewAction(table) {
         "SELECT a.id, a.first_name, a.last_name, role.title, role.name as department, role.salary, concat(b.first_name,' ',b.last_name) as manager from employee a left join employee b on a.manager_id = b.id join (select role.id, role.title, role.salary, department.name from role join department on department.id = role.department_id) role on role.id = a.role_id;";
       break;
   }
+  // run the query, show the results and then go back to the main selection
   runQuery(query).then(() => mainSelect());
 }
 
@@ -108,11 +110,13 @@ function addAction(table) {
         .then((val) => {
           query = "INSERT INTO department (name) VALUES (?)";
           param = [val.deptName];
+          // use the query and parameter to create a SQL statement then go back to the main selection
           runQuery(query, param).then(() => mainSelect());
         });
       break;
 
     case "Role":
+      // we needed to get all the available departments for the list selection of the inquirer module
       query = "SELECT name from department";
       getQuery(query).then((choices) => {
         inquirer
@@ -150,12 +154,13 @@ function addAction(table) {
             },
           ])
           .then((val) => {
+            // get the department id from the department chosen
             query = `SELECT id as name FROM department WHERE name = '${val.roleDept}'`;
             getQuery(query).then((choices) => {
+              // include the department id to the values to be updated
               query =
                 "INSERT INTO role (title,salary,department_id) VALUES (?,?,?)";
               param = [val.roleName, parseInt(val.roleSalary), ...choices];
-              console.log(param);
               runQuery(query, param).then(() => mainSelect());
             });
           });
@@ -165,10 +170,12 @@ function addAction(table) {
     case "Employee":
       let title;
       let manager;
+      // get the role titles for the list choices
       query = "SELECT title as name from role";
       getQuery(query).then((choices) => {
         title = [...choices];
       });
+      // get the employee names for the manager choices
       query = "SELECT concat(first_name,' ',last_name) as name from employee";
       getQuery(query)
         .then((choices) => {
@@ -217,36 +224,40 @@ function addAction(table) {
               let roleId;
               let managerId;
 
-              const manager = val.manager === "None" ? "" : val.manager;
-              if (manager) {
-                const nameArr = val.manager.split(" ");
-                const [firstName, lastName] = nameArr;
-
+              // query would differ if there's no manager chosen, we should let the insert set manager_id to NULL if so
+              if (manager !== "None") {
+                // get roleId of the selected role and store to roleId
                 query = `SELECT id as name FROM role WHERE title = '${val.role}'`;
                 getQuery(query).then((choices) => {
                   [roleId] = choices;
                 });
 
+                // split manager name to firstName and lastName so we could use these to get the employee id for the manager
+                const nameArr = val.manager.split(" ");
+                const [firstName, lastName] = nameArr;
+
+                // get employee id of the manager and store to managerId
                 query = `SELECT id as name FROM employee WHERE first_name = '${firstName}' and last_name = '${lastName}'`;
                 getQuery(query).then((choices) => {
                   [managerId] = choices;
+                  // finally create the statement to insert new employee to table
                   query =
                     "INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?,?,?,?)";
                   param = [val.firstName, val.lastName, roleId, managerId];
-                  console.log(param);
                   runQuery(query, param).then(() => mainSelect());
                 });
               } else {
+                // get roleId of the selected role and then create the insert statement to add the new employee
                 query = `SELECT id as name FROM role WHERE title = '${val.role}'`;
                 getQuery(query)
                   .then((choices) => {
                     [roleId] = choices;
                   })
                   .then(() => {
+                    // create the statement to insert new employee to table
                     query =
                       "INSERT INTO employee (first_name, last_name, role_id) VALUES (?,?,?)";
                     param = [val.firstName, val.lastName, roleId];
-                    console.log(param);
                     runQuery(query, param).then(() => mainSelect());
                   });
               }
@@ -258,14 +269,15 @@ function addAction(table) {
 
 function updateAction() {
   let title;
-  // let employee;
 
+  // let's build the list for the roles and the employee names
   query = "SELECT title as name from role";
   getQuery(query).then((choices) => {
     title = [...choices];
   });
   query = "SELECT concat(first_name,' ',last_name) as name from employee";
   getQuery(query).then((choices) => {
+    // ask the user which employee to update and what role to assign
     inquirer
       .prompt([
         {
@@ -282,20 +294,26 @@ function updateAction() {
         },
       ])
       .then((val) => {
+        // split employee name to first and last name
         const nameArr = val.name.split(" ");
         const [firstName, lastName] = nameArr;
 
+        // get role id of the the new role selected
         query = `SELECT id as name FROM role WHERE title = '${val.role}'`;
         getQuery(query)
           .then((choices) => {
             [roleId] = choices;
           })
           .then(() => {
+            // use the selected first and last names to select the employee to be updated since the names came from a previous select and not user input (no user error expected)
             query = `UPDATE employee SET role_id = ? WHERE first_name = '${firstName}' and last_name = '${lastName}'`;
             param = [roleId];
-            console.log(param);
+            // run the update statement and go back to main select
             runQuery(query, param).then(() => mainSelect());
           });
       });
   });
 }
+
+// show header and main selections
+init();

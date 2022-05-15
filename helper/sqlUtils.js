@@ -29,9 +29,11 @@ const runQuery = async (query, param) => {
       );
     }
   } else {
-    // this handles the adding of new records to tables
+    // this handles the adding of new records/removing of records
     if (rows.affectedRows > 0) {
-      console.log(`${param[0]} added to the database.`);
+      if (query.includes("DELETE")) {
+        console.log(`${param[0]} removed from the database.`);
+      }
     }
   }
 };

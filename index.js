@@ -31,10 +31,15 @@ function mainSelect() {
           "View All Departments",
           "View All Roles",
           "View All Employees",
+          "View Total Utilized Budget of a Department",
           "Add Department",
           "Add Role",
           "Add Employee",
+          "Delete Department",
+          "Delete Role",
+          "Delete Employee",
           "Update Employee Role",
+          "Update Employee Manager",
           "Quit",
         ],
       },
@@ -53,7 +58,12 @@ function mainSelect() {
           addAction(action[1]);
           break;
         case "Update":
-          updateAction();
+          // passes the third word from the options in the main selection
+          updateAction(action[2]);
+          break;
+        case "Delete":
+          // passes the second word from the options in the main selection
+          deleteAction(action[1]);
           break;
         default:
           quit();
@@ -72,20 +82,46 @@ function viewAction(table) {
   switch (table) {
     case "Departments":
       query = "SELECT * from department";
+      // run the query, show the results and then go back to the main selection
+      runQuery(query).then(() => mainSelect());
       break;
 
     case "Roles":
       query =
         "SELECT role.id, role.title, department.name, role.salary from role join department on department.id = role.department_id order by role.id";
+      // run the query, show the results and then go back to the main selection
+      runQuery(query).then(() => mainSelect());
       break;
 
     case "Employees":
       query =
         "SELECT a.id, a.first_name, a.last_name, role.title, role.name as department, role.salary, concat(b.first_name,' ',b.last_name) as manager from employee a left join employee b on a.manager_id = b.id join (select role.id, role.title, role.salary, department.name from role join department on department.id = role.department_id) role on role.id = a.role_id;";
+      // run the query, show the results and then go back to the main selection
+      runQuery(query).then(() => mainSelect());
+      break;
+
+    case "Utilized":
+      query = "SELECT name from department";
+      getQuery(query).then((choices) => {
+        inquirer
+          .prompt([
+            {
+              type: "list",
+              name: "department",
+              message: "Which department do you like to check?",
+              choices: [...choices],
+            },
+          ])
+          .then((val) => {
+            query =
+              "SELECT name AS department, role.salary AS salary FROM department LEFT JOIN (SELECT department_id, sum(salary) AS salary FROM role LEFT JOIN employee ON role_id = role.id GROUP BY department_id) role ON department.id = role.department_id WHERE name = ?";
+            param = [val.department];
+            // run the query, show the results and then go back to the main selection
+            runQuery(query, param).then(() => mainSelect());
+          });
+      });
       break;
   }
-  // run the query, show the results and then go back to the main selection
-  runQuery(query).then(() => mainSelect());
 }
 
 function addAction(table) {
@@ -223,94 +259,168 @@ function addAction(table) {
             .then((val) => {
               let roleId;
               let managerId;
+              let fields = "(first_name, last_name, role_id";
+              let values = "(?,?,?";
 
               // query would differ if there's no manager chosen, we should let the insert set manager_id to NULL if so
               if (manager !== "None") {
-                // get roleId of the selected role and store to roleId
-                query = `SELECT id as name FROM role WHERE title = '${val.role}'`;
-                getQuery(query).then((choices) => {
-                  [roleId] = choices;
-                });
-
-                // split manager name to firstName and lastName so we could use these to get the employee id for the manager
-                const nameArr = val.manager.split(" ");
-                const [firstName, lastName] = nameArr;
-
                 // get employee id of the manager and store to managerId
-                query = `SELECT id as name FROM employee WHERE first_name = '${firstName}' and last_name = '${lastName}'`;
+                query = `SELECT id as name FROM employee WHERE CONCAT(first_name,' ',last_name) = '${val.manager}'`;
                 getQuery(query).then((choices) => {
                   [managerId] = choices;
-                  // finally create the statement to insert new employee to table
-                  query =
-                    "INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?,?,?,?)";
-                  param = [val.firstName, val.lastName, roleId, managerId];
-                  runQuery(query, param).then(() => mainSelect());
+                  fields += ", manager_id)";
+                  values += ",?)";
                 });
               } else {
-                // get roleId of the selected role and then create the insert statement to add the new employee
-                query = `SELECT id as name FROM role WHERE title = '${val.role}'`;
-                getQuery(query)
-                  .then((choices) => {
-                    [roleId] = choices;
-                  })
-                  .then(() => {
-                    // create the statement to insert new employee to table
-                    query =
-                      "INSERT INTO employee (first_name, last_name, role_id) VALUES (?,?,?)";
-                    param = [val.firstName, val.lastName, roleId];
-                    runQuery(query, param).then(() => mainSelect());
-                  });
+                fields += ")";
+                values += ")";
               }
+
+              // get roleId of the selected role and store to roleId
+              query = `SELECT id as name FROM role WHERE title = '${val.role}'`;
+              getQuery(query).then((choices) => {
+                [roleId] = choices;
+                // finally create the statement to insert new employee to table
+                query = `INSERT INTO employee ${fields} VALUES ${values}`;
+                param =
+                  manager !== "None"
+                    ? [val.firstName, val.lastName, roleId, managerId]
+                    : [val.firstName, val.lastName, roleId];
+                runQuery(query, param).then(() => mainSelect());
+              });
             });
         });
       break;
   }
 }
 
-function updateAction() {
-  let title;
+function updateAction(table) {
+  let prompt = [];
+  let message;
 
-  // let's build the list for the roles and the employee names
-  query = "SELECT title as name from role";
-  getQuery(query).then((choices) => {
-    title = [...choices];
-  });
+  if (table === "Role") {
+    // let's build the role list
+    query = "SELECT title as name from role";
+    getQuery(query).then((choices) => {
+      prompt = [...choices];
+      message = "Which role do you want to assign the selected employee?";
+    });
+  }
+
   query = "SELECT concat(first_name,' ',last_name) as name from employee";
   getQuery(query).then((choices) => {
-    // ask the user which employee to update and what role to assign
+    // let's use the same choices for the manager's name
+    prompt = [...choices];
+    message = "Which manager do you want to assign the selected employee?";
+
+    // ask the user which employee to update and what value to update
     inquirer
       .prompt([
         {
           type: "list",
           name: "name",
-          message: "Which employee's role do you want to update?",
+          message: "Which employee do you want to update?",
           choices: [...choices],
         },
         {
           type: "list",
-          name: "role",
-          message: "Which role do you want to assign the selected employee?",
-          choices: [...title],
+          name: "update",
+          message: message,
+          choices: [...prompt],
         },
       ])
       .then((val) => {
-        // split employee name to first and last name
-        const nameArr = val.name.split(" ");
-        const [firstName, lastName] = nameArr;
-
         // get role id of the the new role selected
-        query = `SELECT id as name FROM role WHERE title = '${val.role}'`;
-        getQuery(query)
-          .then((choices) => {
-            [roleId] = choices;
-          })
-          .then(() => {
-            // use the selected first and last names to select the employee to be updated since the names came from a previous select and not user input (no user error expected)
-            query = `UPDATE employee SET role_id = ? WHERE first_name = '${firstName}' and last_name = '${lastName}'`;
-            param = [roleId];
-            // run the update statement and go back to main select
-            runQuery(query, param).then(() => mainSelect());
+        if (table === "Role") {
+          query = `SELECT id as name FROM role WHERE title = '${val.update}'`;
+        } else {
+          query = `SELECT id as name FROM employee WHERE CONCAT(first_name,' ',last_name) = '${val.update}'`;
+        }
+        getQuery(query).then((choices) => {
+          [roleId] = choices;
+          // use the selected name to select the employee to be updated since the name came from a previous select and not user input (no user error expected)
+          if (table === "Role") {
+            query = `UPDATE employee SET role_id = ? WHERE CONCAT(first_name,' ',last_name) = '${val.name}'`;
+          } else {
+            query = `UPDATE employee SET manager_id = ? WHERE CONCAT(first_name,' ',last_name) = '${val.name}'`;
+          }
+          param = [roleId];
+          // run the update statement and go back to main select
+          runQuery(query, param).then(() => {
+            console.log(`${val.name} updated.`);
+            mainSelect();
           });
+        });
+      });
+  });
+}
+
+function deleteAction(table) {
+  let field;
+
+  switch (table) {
+    case "Department":
+      field = "name";
+      break;
+
+    case "Role":
+      field = "title";
+      break;
+
+    case "Employee":
+      field = "CONCAT(first_name, ' ', last_name)";
+      break;
+
+    default:
+      break;
+  }
+
+  deleteInq(field, table);
+}
+
+function deleteInq(field, table) {
+  const select = `SELECT ${field} as name from ${table}`;
+  const deleteSt = `DELETE FROM ${table} where ${field} = (?)`;
+  const message = `Which ${table} do you want to delete?`;
+
+  getQuery(select).then((choices) => {
+    inquirer
+      .prompt([
+        {
+          type: "list",
+          name: "name",
+          message: message,
+          choices: [...choices],
+        },
+      ])
+      .then((val) => {
+        let query;
+        if (table === "Employee") {
+          // we don't need to worry about deleting a record in the employee table
+          param = [val.name];
+          runQuery(deleteSt, param).then(() => mainSelect());
+        } else {
+          // if record is to be deleted in either department or role, we should check first if there's a child record related to the record to be deleted
+          if (table === "Department") {
+            query = `SELECT title as name FROM department join role on department.id = role.department_id where name = '${val.name}'`;
+          }
+          if (table === "Role") {
+            query = `SELECT CONCAT(first_name,' ',last_name) as name FROM employee join role on employee.role_id = role.id where title = '${val.name}'`;
+          }
+
+          getQuery(query).then((choices) => {
+            const tableName = table === "Department" ? "role" : "emnployee";
+            if (choices.length > 0) {
+              console.log(
+                `Cannot delete ${val.name}. It has a child record in the ${tableName} table.`
+              );
+              mainSelect();
+            } else {
+              param = [val.name];
+              runQuery(deleteSt, param).then(() => mainSelect());
+            }
+          });
+        }
       });
   });
 }

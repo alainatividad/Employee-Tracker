@@ -31,6 +31,8 @@ function mainSelect() {
           "View All Departments",
           "View All Roles",
           "View All Employees",
+          "View by Manager",
+          "View by Department",
           "View Total Utilized Budget of a Department",
           "Add Department",
           "Add Role",
@@ -95,7 +97,7 @@ function viewAction(table) {
 
     case "Employees":
       query =
-        "SELECT a.id, a.first_name, a.last_name, role.title, role.name as department, role.salary, concat(b.first_name,' ',b.last_name) as manager from employee a left join employee b on a.manager_id = b.id join (select role.id, role.title, role.salary, department.name from role join department on department.id = role.department_id) role on role.id = a.role_id;";
+        "SELECT a.id, a.first_name, a.last_name, role.title, role.name as department, role.salary, concat(b.first_name,' ',b.last_name) as manager from employee a left join employee b on a.manager_id = b.id join (select role.id, role.title, role.salary, department.name from role join department on department.id = role.department_id) role on role.id = a.role_id";
       // run the query, show the results and then go back to the main selection
       runQuery(query).then(() => mainSelect());
       break;
@@ -116,6 +118,50 @@ function viewAction(table) {
             query =
               "SELECT name AS department, role.salary AS salary FROM department LEFT JOIN (SELECT department_id, sum(salary) AS salary FROM role LEFT JOIN employee ON role_id = role.id GROUP BY department_id) role ON department.id = role.department_id WHERE name = ?";
             param = [val.department];
+            // run the query, show the results and then go back to the main selection
+            runQuery(query, param).then(() => mainSelect());
+          });
+      });
+      break;
+
+    case "Department":
+      query = "SELECT name from department";
+      getQuery(query).then((choices) => {
+        inquirer
+          .prompt([
+            {
+              type: "list",
+              name: "department",
+              message: "Which department do you like to check?",
+              choices: [...choices],
+            },
+          ])
+          .then((val) => {
+            query =
+              "SELECT a.id, a.first_name, a.last_name, role.title, role.name as department from employee a left join employee b on a.manager_id = b.id join (select role.id, role.title, department.name from role join department on department.id = role.department_id WHERE department.name = ?) role on role.id = a.role_id";
+            param = [val.department];
+            // run the query, show the results and then go back to the main selection
+            runQuery(query, param).then(() => mainSelect());
+          });
+      });
+      break;
+
+    case "Manager":
+      query = "SELECT CONCAT(first_name,' ',last_name) as name from employee";
+      getQuery(query).then((choices) => {
+        inquirer
+          .prompt([
+            {
+              type: "list",
+              name: "manager",
+              message: "Which manager do you like to check?",
+              choices: [...choices],
+            },
+          ])
+          .then((val) => {
+            query =
+              "SELECT a.id, a.first_name, a.last_name, role.title, role.name as department, concat(b.first_name,' ',b.last_name) as manager from employee a left join employee b on a.manager_id = b.id join (select role.id, role.title, department.name from role join department on department.id = role.department_id) role on role.id = a.role_id WHERE CONCAT(b.first_name,' ',b.last_name) = ?";
+            param = [val.manager];
             // run the query, show the results and then go back to the main selection
             runQuery(query, param).then(() => mainSelect());
           });

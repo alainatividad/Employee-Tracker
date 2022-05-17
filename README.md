@@ -2,7 +2,22 @@
 
 ## Description
 
-This is a Javascript command-line application that views and interacts with information stored in a database -- specifically, a company database.
+This is a Javascript command-line application that views and interacts with information stored in a database -- specifically, a company database. The company database has three main tables: Department, Role, and Employee.
+
+### Department Table
+
+The department table includes the id and name of the department.
+
+### Role Table
+
+The role table consists of the name of the role, the salary for that role, and the department id on where that role is under. The department id also links the role and the department tables.
+
+### Employee Table
+
+The employee table consists of the employee's id number, first name and last name, role id and manager id that links the record to the role table and employee table respectively.
+
+The tables are linked as shown:
+![Database schema includes tables labeled “employee,” role,” and “department.”](./assets/schema.png)
 
 The application lists an selection of commands that can be used to interact with the data from the database. In general, the user can either view data, add or update employee details, and delete records from the tables.
 
@@ -21,18 +36,6 @@ When a role is added, the user will be prompted to select on which department th
 The user can update the employee's role or manager.
 
 This program is ran using Node.js with modules Inquirer and MySQL2 that handles the questions and their corresponding answers, and the connection to the database respectively.
-
-### Department Table
-
-The department table includes the id and name of the department.
-
-### Role Table
-
-The role table consists of the name of the role, the salary for that role, and the department id on where that role is under. The department id also links the role and the department tables.
-
-### Employee Table
-
-The employee table consists of the employee's id number, first name and last name, role id and manager id that links the record to the role table and employee table respectively.
 
 ## Demonstration of the Application
 

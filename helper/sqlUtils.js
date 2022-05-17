@@ -24,9 +24,7 @@ const runQuery = async (query, param) => {
     if (rows.length > 0) {
       console.table(rows);
     } else {
-      console.log(
-        "\nThere are no records to show. Please add entries to the table.\n"
-      );
+      console.log("\nThere are no records to show.\n");
     }
   } else {
     // this handles the adding of new records/removing of records

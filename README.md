@@ -41,6 +41,8 @@ This program is ran using Node.js with modules Inquirer and MySQL2 that handles 
 
 The program is run in the command line, giving the user a selection of actions. After selecting a command, the application would either show the table with the records or ask additional questions about the command.
 
+![Database schema includes tables labeled “employee,” role,” and “department.”](./assets/EmployeeTracker.gif)
+
 ## Installation
 
 After forking the project, run the code below to install the modules needed to run this program:
@@ -54,7 +56,7 @@ Also run the following in mysql to create the database and also seed the databas
 ```
 mysql -u root -p
 source ./db/schema.sql
-source ./db/seeds.sql
+source ./db/seed.sql
 ```
 
 ## Usage

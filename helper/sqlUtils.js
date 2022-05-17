@@ -31,6 +31,8 @@ const runQuery = async (query, param) => {
     if (rows.affectedRows > 0) {
       if (query.includes("DELETE")) {
         console.log(`${param[0]} removed from the database.`);
+      } else if (query.includes("INSERT")) {
+        console.log(`${param[0]} added the database.`);
       }
     }
   }

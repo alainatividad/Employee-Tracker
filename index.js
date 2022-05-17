@@ -355,10 +355,11 @@ function updateAction(table) {
 
   query = "SELECT concat(first_name,' ',last_name) as name from employee";
   getQuery(query).then((choices) => {
-    // let's use the same choices for the manager's name
-    prompt = [...choices];
-    message = "Which manager do you want to assign the selected employee?";
-
+    // let's use the same choices for the manager's
+    if (table !== "Role") {
+      prompt = [...choices];
+      message = "Which manager do you want to assign the selected employee?";
+    }
     // ask the user which employee to update and what value to update
     inquirer
       .prompt([
